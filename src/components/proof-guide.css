@@ -1,0 +1,172 @@
+.proof-guide {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+.proof-guide-intro {
+  font-size: 13px;
+}
+.proof-guide-progress {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  color: var(--mint);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+}
+.proof-guide-progress span {
+  white-space: nowrap;
+}
+.proof-guide-progress progress {
+  width: 100%;
+  height: 5px;
+  border: 0;
+  accent-color: var(--mint);
+}
+.proof-guide-progress progress::-webkit-progress-bar {
+  background: var(--border);
+  border-radius: 4px;
+}
+.proof-guide-progress progress::-webkit-progress-value {
+  background: var(--mint);
+  border-radius: 4px;
+}
+.proof-guide-step {
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #101923;
+}
+.proof-guide-step h3 {
+  color: #e8eef5;
+}
+.proof-guide-step p {
+  font-size: 13px;
+  line-height: 1.85;
+  overflow-wrap: anywhere;
+}
+.proof-guide-formula {
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+  padding: 7px 0;
+  color: var(--mint);
+  font-size: 13px;
+}
+.proof-guide-note {
+  padding: 10px 12px;
+  border-left: 2px solid #dfb77a;
+  background: #211f1a;
+  color: #ddc9a7;
+}
+.proof-guide-note.is-satisfied {
+  border-color: var(--mint);
+  background: #132822;
+  color: #b6dfd5;
+}
+.proof-guide-controls {
+  display: grid;
+  grid-template-columns: 1fr 1.3fr 1fr;
+  gap: 8px;
+}
+.proof-guide button {
+  min-height: 44px;
+  font-size: 13px;
+}
+.proof-guide-return {
+  width: 100%;
+  color: var(--mint);
+  border-color: #355b54;
+}
+.proof-guide-details {
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+  min-width: 0;
+}
+.proof-guide-details summary {
+  padding: 8px 0;
+  font-size: 13px;
+  color: #bdcbd7;
+  cursor: pointer;
+}
+.proof-guide-details summary:focus-visible {
+  outline: 2px solid var(--mint);
+  outline-offset: 3px;
+}
+.proof-guide-dependencies {
+  display: grid;
+  gap: 9px;
+  margin: 8px 0 16px;
+}
+.proof-guide-dependencies p {
+  font-size: 12px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+}
+.proof-guide-dependencies span {
+  display: block;
+  font-size: 11px;
+  color: var(--muted);
+}
+.proof-guide-index {
+  margin: 0;
+  padding-left: 26px;
+  color: var(--muted);
+}
+.proof-guide-index button {
+  text-align: left;
+  background: transparent;
+  border-color: transparent;
+  width: 100%;
+  padding: 8px;
+}
+.proof-guide-index button[aria-current="step"] {
+  color: var(--mint);
+  background: #142824;
+}
+.proof-guide-quiz {
+  display: grid;
+  gap: 12px;
+  padding-top: 8px;
+}
+.proof-guide-quiz p {
+  font-size: 13px;
+}
+.proof-guide-counter {
+  font-size: 11px;
+  color: var(--muted);
+}
+.proof-guide-choices {
+  display: grid;
+  gap: 8px;
+}
+.proof-guide-choices button {
+  text-align: left;
+}
+.proof-guide-answer {
+  border-left: 2px solid #51756c;
+  padding-left: 10px;
+}
+@media (max-width: 400px) {
+  .proof-guide {
+    gap: 12px;
+  }
+  .proof-guide-step {
+    padding: 12px;
+  }
+  .proof-guide-controls {
+    gap: 5px;
+  }
+  .proof-guide-controls button {
+    padding: 8px 6px;
+    font-size: 12px;
+  }
+}
+
+.proof-guide-controls.proof-step-controls {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
