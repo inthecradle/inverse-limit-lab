@@ -11,6 +11,70 @@ async function chooseFirstThread(page: Page) {
     .click();
 }
 
+test("rewind, layer changes and full reset keep iteration state consistent", async ({
+  page,
+}) => {
+  await page.goto("./");
+  const first = page.getByRole("slider", { name: "層0の実点", exact: true });
+  const initial = await first.getAttribute("aria-valuenow");
+  await chooseFirstThread(page);
+  const start = await first.getAttribute("aria-valuenow");
+  await page.getByRole("tab", { name: /落ち着く/ }).click();
+  const step = page.getByRole("button", { name: "1回進める", exact: true });
+  for (let count = 0; count < 3; count += 1) await step.click();
+  await expect(page.getByTestId("iteration")).toHaveText("n = 3");
+  expect(await first.getAttribute("aria-valuenow")).not.toBe(start);
+  const rewind = page.getByRole("button", {
+    name: "開始点へ戻す",
+    exact: true,
+  });
+  await rewind.click();
+  await expect(page.getByTestId("iteration")).toHaveText("n = 0");
+  await expect(first).toHaveAttribute("aria-valuenow", start!);
+  await expect(rewind).toBeDisabled();
+
+  await step.click();
+  const advanced = await first.getAttribute("aria-valuenow");
+  await page.getByRole("button", { name: "条件を変える", exact: true }).click();
+  await page.getByLabel("層数", { exact: true }).selectOption("8");
+  await close(page);
+  await expect(page.getByTestId("iteration")).toHaveText("n = 0");
+  await expect(first).toHaveAttribute("aria-valuenow", advanced!);
+  await expect(rewind).toBeDisabled();
+  await expect(page.getByRole("slider", { name: /^層/ })).toHaveCount(8);
+
+  await page.getByRole("tab", { name: /自分を表す/ }).click();
+  await page
+    .getByRole("button", { name: "基準固定点を表示", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "自己表象を加える", exact: true })
+    .click();
+  await page.getByRole("button", { name: "条件を変える", exact: true }).click();
+  await page
+    .getByRole("button", { name: "全て初期状態に戻す", exact: true })
+    .click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(page.getByRole("tab", { name: /つなぐ/ })).toHaveAttribute(
+    "aria-selected",
+    "true",
+  );
+  await expect(page.getByRole("slider", { name: /^層/ })).toHaveCount(6);
+  await expect(first).toHaveAttribute("aria-valuenow", initial!);
+  await expect(page.getByTestId("coherence-status")).toContainText(
+    "整合していない",
+  );
+  await page.getByRole("tab", { name: /落ち着く/ }).click();
+  await expect(page.getByTestId("iteration")).toHaveText("n = 0");
+  await expect(
+    page.getByLabel("縮小率のパラメータ", { exact: false }),
+  ).toHaveValue("0.65");
+  await page.getByRole("tab", { name: /自分を表す/ }).click();
+  await expect(page.getByTestId("representation-status")).toContainText(
+    "固定点を確認",
+  );
+});
+
 test("compact chapters preserve states; layers and feedback keep their invariants", async ({
   page,
 }) => {

@@ -8,127 +8,52 @@ import { Sheet } from "./components/Sheet";
 import { AboutContent } from "./components/AboutContent";
 import { Math as Formula } from "./components/Math";
 import {
-  applyFeedback,
   coherentFamily,
   createInitialFamily,
-  createLayers,
-  diagnostics,
-  familyDistance,
   reconcile,
-  resizeSystem,
   threadCandidates,
   toNormalized,
-  type Family,
-  type Layer,
 } from "./model";
 import { historyModel } from "./model/historyModel";
-import {
-  representationReport,
-  type RepresentationMode,
-} from "./model/representationModel";
+import { type RepresentationMode } from "./model/representationModel";
+import { chapters, linkedEquations, type Chapter } from "./chapters";
+import { format } from "./formatNumber";
+import { useExperiment } from "./hooks/useExperiment";
+import { MathContent } from "./components/MathContent";
 import { conditionCases } from "./model/conditionExperiments";
 
-type Chapter = "connect" | "settle" | "represent" | "history";
 type Overlay =
   "settings" | "gallery" | "math" | "proof" | "about" | "distance" | null;
-type Experiment = {
-  layers: Layer[];
-  family: Family;
-  initial: Family | null;
-  distances: number[];
-  n: number;
-};
-const chapters: {
-  id: Chapter;
-  name: string;
-  en: string;
-  title: string;
-  text: string;
-  equation: string;
-  focus: string;
-}[] = [
-  {
-    id: "connect",
-    name: "つなぐ",
-    en: "COHERENCE",
-    title: "層を写しても、矛盾しない糸へ。",
-    text: "点を動かして、塗り点と射影先の中空点を比べてみましょう。",
-    equation: String.raw`\pi_{\alpha\leftarrow\beta}(x_\beta)=x_\alpha`,
-    focus: "coherence",
-  },
-  {
-    id: "settle",
-    name: "落ち着く",
-    en: "FIXED POINT",
-    title: "更新しても変わらない糸を探す。",
-    text: "反復は糸の全体を更新します。Lを変えると、近づく速さや保証が変わります。",
-    equation: String.raw`S_{n+1}=F_{SC}(S_n)`,
-    focus: "feedback",
-  },
-  {
-    id: "represent",
-    name: "自分を表す",
-    en: "REPRESENTATION",
-    title: "固定点に、自分を指す表象を加える。",
-    text: "状態と、それを表す内部表象を分けて見ます。表象を外しても固定点は残ります。",
-    equation: String.raw`M(S^*)\;\text{represents}\;S^*`,
-    focus: "representation",
-  },
-  {
-    id: "history",
-    name: "履歴を変える",
-    en: "HISTORY",
-    title: "履歴が変わると、固定点も変わる。",
-    text: "履歴Bを動かしてAと比べます。層の集合と、その上の固定点が変化します。",
-    equation: String.raw`S^*_{h}\in SC_h`,
-    focus: "history",
-  },
-];
-function fresh(): Experiment {
-  const layers = createLayers(6);
-  return {
-    layers,
-    family: createInitialFamily(layers),
-    initial: null,
-    distances: [],
-    n: 0,
-  };
-}
-const format = (value: number) =>
-  Math.abs(value) < 1e-12
-    ? "≈ 0"
-    : Math.abs(value) < 1e-4
-      ? value.toExponential(2)
-      : value.toFixed(4);
-
 export default function App() {
   const [chapter, setChapter] = useState<Chapter>("connect");
-  const [experiment, setExperiment] = useState<Experiment>(fresh);
-  const [rate, setRate] = useState(0.65);
-  const [playing, setPlaying] = useState(false);
+  const {
+    experiment,
+    rate,
+    playing,
+    representation,
+    notice,
+    result,
+    target,
+    distance,
+    report,
+    setPlaying,
+    setRepresentation,
+    setNotice,
+    selectFamily,
+    restart,
+    changeRate,
+    changeLayerCount,
+    advance,
+    reset,
+  } = useExperiment();
   const [overlay, setOverlay] = useState<Overlay>(null);
   const [highlight, setHighlight] = useState<string | null>(null);
-  const [representation, setRepresentation] =
-    useState<RepresentationMode>("absent");
   const [historyA, setHistoryA] = useState(-0.7);
   const [historyB, setHistoryB] = useState(0.7);
   const [caseId, setCaseId] = useState("composition");
   const [probe, setProbe] = useState(0);
-  const [notice, setNotice] = useState(
-    "点はタップ、ドラッグ、矢印キーで動かせます。",
-  );
   const { layers, family, n, distances } = experiment;
   const current = chapters.find((item) => item.id === chapter)!;
-  const result = diagnostics(layers, family);
-  const target = coherentFamily(layers, 0.2);
-  const distance = familyDistance(layers, family, target);
-  const report = representationReport(
-    layers,
-    family,
-    rate,
-    0.2,
-    representation,
-  );
   const a = historyModel(historyA, layers.length),
     b = historyModel(historyB, layers.length);
   const fixedA = coherentFamily(a.layers, a.q),
@@ -150,7 +75,6 @@ export default function App() {
   );
   const condition = conditionCases.find((item) => item.id === caseId)!;
   const witness = condition.evaluate(probe);
-  const advanceRef = useRef<() => void>(() => {});
   const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
   function openSheet(next: Overlay) {
@@ -168,79 +92,6 @@ export default function App() {
     setHighlight(null);
     setNotice("");
   }
-  function selectFamily(next: Family, message: string) {
-    setPlaying(false);
-    setRepresentation("absent");
-    setExperiment((prev) => ({
-      ...prev,
-      family: next,
-      initial: null,
-      distances: [],
-      n: 0,
-    }));
-    setNotice(message);
-  }
-  function restart() {
-    setPlaying(false);
-    setRepresentation("absent");
-    setExperiment((prev) => ({
-      ...prev,
-      family: prev.initial ?? prev.family,
-      initial: null,
-      distances: [],
-      n: 0,
-    }));
-    setNotice("反復の開始点へ戻しました。");
-  }
-  function changeRate(value: number) {
-    setRate(value);
-    restart();
-    setNotice("同じ開始点から、新しいLで比較できます。");
-  }
-  function advance() {
-    if (!result.coherent || n >= 200) {
-      setPlaying(false);
-      return;
-    }
-    const next = applyFeedback(layers, family, rate);
-    const movement = familyDistance(layers, next, family);
-    const nextDistance = familyDistance(layers, next, target);
-    setExperiment((prev) => ({
-      ...prev,
-      family: next,
-      initial: prev.initial ?? [...prev.family],
-      n: prev.n + 1,
-      distances: [
-        ...(prev.distances.length ? prev.distances : [distance]),
-        nextDistance,
-      ],
-    }));
-    if (movement < 1e-9 || (rate < 1 && nextDistance < 1e-6) || n + 1 >= 200) {
-      setPlaying(false);
-      setNotice(
-        n + 1 >= 200
-          ? "200回で停止しました。開始点へ戻して比較できます。"
-          : "変化が数値許容誤差に達したため、停止しました。",
-      );
-    }
-  }
-  useEffect(() => {
-    advanceRef.current = advance;
-  });
-  useEffect(() => {
-    if (!playing) return;
-    let frame = 0,
-      last = performance.now();
-    const tick = (time: number) => {
-      if (time - last >= 600) {
-        last = time;
-        advanceRef.current();
-      }
-      frame = requestAnimationFrame(tick);
-    };
-    frame = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(frame);
-  }, [playing]);
   useEffect(() => {
     const reveal = () => {
       if (location.hash === "#about") {
@@ -274,33 +125,11 @@ export default function App() {
       <Formula tex={tex} />
     </button>
   );
-  const linkedEquations: Record<string, string> = {
-    layers: String.raw`x_\alpha\in TCZ_\alpha`,
-    projection: String.raw`\pi_{\alpha\leftarrow\beta}:TCZ_\beta\to TCZ_\alpha`,
-    coherence: chapters[0].equation,
-    space: String.raw`SC_N=\varprojlim_{\alpha<N} TCZ_\alpha`,
-    fixed: String.raw`F(S^*)=S^*`,
-    feedback: chapters[1].equation,
-    contraction: String.raw`d(S_n,S^*)\le L^n d(S_0,S^*)\quad(L<1)`,
-    representation: chapters[2].equation,
-    history: chapters[3].equation,
-  };
   const equationKey =
     highlight && linkedEquations[highlight] ? highlight : current.focus;
   const coherenceText = result.coherent
     ? "✓ 整合した糸"
     : "≠ 整合していない状態族";
-  const changeLayerCount = (count: number) => {
-    setPlaying(false);
-    setRepresentation("absent");
-    setExperiment({
-      ...resizeSystem(layers, family, count),
-      initial: null,
-      distances: [],
-      n: 0,
-    });
-    setNotice("既存の層を保って層数を変更しました。");
-  };
 
   return (
     <div className="lab-shell">
@@ -917,9 +746,7 @@ export default function App() {
               <button
                 className="reset-button"
                 onClick={() => {
-                  setExperiment(fresh());
-                  setRate(0.65);
-                  setRepresentation("absent");
+                  reset();
                   setHistoryA(-0.7);
                   setHistoryB(0.7);
                   setCaseId("composition");
@@ -934,125 +761,14 @@ export default function App() {
             </div>
           )}
           {overlay === "math" && (
-            <div className="math-content">
-              <div className="formula-box">
-                <Formula tex={current.equation} />
-              </div>
-              {chapter === "connect" && (
-                <>
-                  <h3>直積から、整合する族を選ぶ</h3>
-                  <p>
-                    直積では各層の点を独立に選びます。射影条件を全て満たす族を集めると、有限層の逆極限SC_Nになります。いま選んだ族が不整合でも、整合族の空間が空になったわけではありません。
-                  </p>
-                  <div className="formula-box">
-                    <Formula
-                      tex={String.raw`SC_N=\{(x_\alpha)_\alpha\mid\pi_{\alpha\leftarrow\beta}(x_\beta)=x_\alpha\}`}
-                    />
-                  </div>
-                  <p>
-                    本モデルの整合族は x_α=c_α+r_αz（−1≤z≤1）で構成できます。
-                  </p>
-                  <details>
-                    <summary>全ペアの正規化射影誤差</summary>
-                    <div className="formula-box">
-                      <Formula
-                        tex={String.raw`E_{\rm coh}=\sum_{\alpha<\beta}\left|\frac{\pi_{\alpha\leftarrow\beta}(x_\beta)-x_\alpha}{r_\alpha}\right|^2`}
-                      />
-                    </div>
-                    <div className="residual-list">
-                      {result.residuals.map((row) => (
-                        <div key={`${row.from}-${row.to}`}>
-                          <span>
-                            π {row.to} ← {row.from}
-                          </span>
-                          <b>{format(row.error)}</b>
-                        </div>
-                      ))}
-                    </div>
-                  </details>
-                </>
-              )}
-              {chapter === "settle" && (
-                <>
-                  <h3>存在と一意性を分ける</h3>
-                  <p>
-                    本モデルのSC_Nは非空コンパクト凸集合で、Fは連続自己写像です。固定点の存在条件は全てのLで保たれます。L&lt;1を加えると、完備距離についての縮小写像として、一意性と反復収束が保証されます。
-                  </p>
-                  <div className="formula-box">
-                    <Formula
-                      tex={String.raw`f(z)=\operatorname{clip}_{[-1,1]}(q+L(z-q)),\quad q=0.2`}
-                    />
-                  </div>
-                  <p>
-                    {rate < 1
-                      ? "現在は縮小条件を満たします。"
-                      : rate === 1
-                        ? "現在は恒等写像です。全ての整合族が固定点になります。"
-                        : "現在の固定点は−1、0.2、1の3つです。"}
-                  </p>
-                </>
-              )}
-              {chapter === "represent" && (
-                <>
-                  <h3>忠実さと同変性を、別に確認する</h3>
-                  <p>
-                    整合した糸の共通座標zを、組(z,z²)で表します。この組の第1座標から元の糸を復元できます。これが本モデルでの忠実な表象関係です。
-                  </p>
-                  <div className="formula-box">
-                    <Formula
-                      tex={String.raw`M(S(z))=(z,z^2),\quad F_{Rep}(z,z^2)=(f(z),f(z)^2)`}
-                    />
-                    <br />
-                    <Formula tex={String.raw`M\circ F=F_{Rep}\circ M`} />
-                  </div>
-                  <p>
-                    同変性は「状態を更新してから表す」と「表象側を更新する」が一致することです。忠実モードでは、この式の定義により全てのzで成立します。
-                  </p>
-                  <div className="report-grid">
-                    <span>
-                      固定点：{report.isFixed ? "数値条件内" : "未到達"}
-                    </span>
-                    <span>忠実さ：{report.faithful ? "成立" : "未成立"}</span>
-                    <span>
-                      現在点での同変性：{report.equivariant ? "一致" : "未成立"}
-                    </span>
-                    <span>
-                      表象側の固定点：
-                      {report.representationFixed ? "数値条件内" : "未成立"}
-                    </span>
-                  </div>
-                  <p className="note">
-                    不一致モードで、たまたま現在点の同変式が一致しても、忠実な自己表象の成立とは扱いません。図は機能的な数学モデルで、主観的体験の証明ではありません。
-                  </p>
-                </>
-              )}
-              {chapter === "history" && (
-                <>
-                  <h3>層の区間と固定点を、同じhから構成する</h3>
-                  <div className="formula-box">
-                    <Formula
-                      tex={String.raw`c_\alpha(h)=c_\alpha+h(0.16+0.025\alpha)`}
-                    />
-                    <br />
-                    <Formula
-                      tex={String.raw`r_\alpha(h)=r_\alpha(1+0.18h),\quad q(h)=0.2+0.45h`}
-                    />
-                  </div>
-                  <p>
-                    各履歴の射影はその層の正規化座標を保存します。SC_hは変わりますが、−1≤h≤1で区間は非空コンパクトのままです。比較に使う写像のLは0.65で、一意固定点S*_h=(c_α(h)+r_α(h)q(h))_αを構成できます。
-                  </p>
-                  <p>
-                    共通座標でAとBを重ね、座標軸の拡大縮小によって変化が消えないようにしています。任意の現実の履歴についての一般的な測定モデルではありません。
-                  </p>
-                </>
-              )}
-              <p className="note">
-                画面は有限層モデルです。一般の無限逆極限の存在は、有限整合性などの仮定に基づく証明によって扱います。
-              </p>
-              <button onClick={() => setOverlay("proof")}>
-                証明の段階をたどる →
-              </button>
-            </div>
+            <MathContent
+              chapter={chapter}
+              equation={current.equation}
+              result={result}
+              report={report}
+              rate={rate}
+              onProof={() => setOverlay("proof")}
+            />
           )}
           {overlay === "proof" && (
             <ProofGuide
